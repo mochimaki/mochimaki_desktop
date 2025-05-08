@@ -1369,6 +1369,25 @@ def on_container_dialog_result(e: ft.FilePickerResultEvent, page: ft.Page, conta
             with project_info_path.open('r', encoding='utf-8') as f:
                 project_info = json.load(f)
 
+            # リポジトリのクローン処理
+            if 'repositories' in project_info:
+                programs_dir = Path(docker_compose_dir) / 'programs'
+                programs_dir.mkdir(exist_ok=True)
+                
+                for repo_name, repo_info in project_info['repositories'].items():
+                    repo_dir = programs_dir / repo_name
+                    if not repo_dir.exists():
+                        try:
+                            show_status(page, f"{repo_name}をクローン中...")
+                            subprocess.run(
+                                ['git', 'clone', '-b', repo_info['branch'], repo_info['url'], str(repo_dir)],
+                                check=True
+                            )
+                            show_status(page, f"{repo_name}をクローンしました")
+                        except subprocess.CalledProcessError as e:
+                            show_error_dialog(page, "エラー", f"{repo_name}のクローンに失敗しました: {str(e)}")
+                            return
+
             # デスクトップアプリのディレクトリ構成を設定
             if 'desktop_apps' in project_info:
                 setup_desktop_apps_directory(docker_compose_dir, project_info['desktop_apps'], page)
