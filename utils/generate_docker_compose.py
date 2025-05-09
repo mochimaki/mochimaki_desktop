@@ -32,7 +32,9 @@ class DockerComposeGenerator:
         commands = []
         for app_name, app_info in apps.items():
             app_path = normalize_path(f"/home/{user}/apps/{app_name}")
-            commands.append(f"chmod -R 755 {app_path} # アプリケーションルート以下にパーミッションを設定")
+            # app_info.jsonとcontainer_info.jsonを除外してパーミッションを設定
+            commands.append(f"find {app_path} -type f ! -name 'app_info.json' ! -name 'container_info.json' -exec chmod 755 {{}} \\;")
+            commands.append(f"find {app_path} -type d -exec chmod 755 {{}} \\;")
             
             if "data_roots" in app_info:
                 for host_path in app_info["data_roots"]:
