@@ -1388,6 +1388,26 @@ def on_container_dialog_result(e: ft.FilePickerResultEvent, page: ft.Page, conta
                             show_error_dialog(page, "エラー", f"{repo_name}のクローンに失敗しました: {str(e)}")
                             return
 
+            # Dockerfileのクローン処理
+            if 'dockerfiles' in project_info:
+                dockerfiles_dir = Path(docker_compose_dir) / 'dockerfiles'
+                dockerfiles_dir.mkdir(exist_ok=True)
+                for dockerfile_name, dockerfile_info in project_info['dockerfiles'].items():
+                    dockerfile_dir = dockerfiles_dir / dockerfile_name
+                    dockerfile_dir.mkdir(exist_ok=True)
+                    dockerfile_path = dockerfile_dir / 'Dockerfile'
+                    if not dockerfile_path.exists():
+                        try:
+                            show_status(page, f"{dockerfile_name}のDockerfileをクローン中...")
+                            subprocess.run(
+                                ['git', 'clone', '-b', dockerfile_info['branch'], dockerfile_info['url'], str(dockerfile_dir)],
+                                check=True
+                            )
+                            show_status(page, f"{dockerfile_name}のDockerfileをクローンしました")
+                        except subprocess.CalledProcessError as e:
+                            show_error_dialog(page, "エラー", f"{dockerfile_name}のDockerfileのクローンに失敗しました: {str(e)}")
+                            return
+
             # デスクトップアプリのディレクトリ構成を設定
             if 'desktop_apps' in project_info:
                 setup_desktop_apps_directory(docker_compose_dir, project_info['desktop_apps'], page)
