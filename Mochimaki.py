@@ -8,11 +8,14 @@ import re
 import signal
 from utils import (
     show_error_dialog,
+    show_status,
     on_edit_ip_options,
     get_container_settings,
     update_settings_json,
     parse_project_info,
-    DockerComposeGenerator
+    DockerComposeGenerator,
+    clone_repositories,
+    clone_dockerfiles
 )
 from typing import Dict, Any
 from pathlib import Path
@@ -25,13 +28,6 @@ containers_info = {}
 global snack_bar
 global desktop_processes
 desktop_processes = {}
-
-def show_status(page: ft.Page, message: str):
-    """ステータスメッセージをSnackBarで表示する"""
-    global snack_bar
-    snack_bar.content.value = message
-    snack_bar.open = True
-    page.update()
 
 def get_container_status(container):
     if container['id'] and container['state'].lower() == "running":
@@ -1370,43 +1366,12 @@ def on_container_dialog_result(e: ft.FilePickerResultEvent, page: ft.Page, conta
                 project_info = json.load(f)
 
             # リポジトリのクローン処理
-            if 'repositories' in project_info:
-                programs_dir = Path(docker_compose_dir) / 'programs'
-                programs_dir.mkdir(exist_ok=True)
-                
-                for repo_name, repo_info in project_info['repositories'].items():
-                    repo_dir = programs_dir / repo_name
-                    if not repo_dir.exists():
-                        try:
-                            show_status(page, f"{repo_name}をクローン中...")
-                            subprocess.run(
-                                ['git', 'clone', '-b', repo_info['branch'], repo_info['url'], str(repo_dir)],
-                                check=True
-                            )
-                            show_status(page, f"{repo_name}をクローンしました")
-                        except subprocess.CalledProcessError as e:
-                            show_error_dialog(page, "エラー", f"{repo_name}のクローンに失敗しました: {str(e)}")
-                            return
+            if not clone_repositories(project_info, docker_compose_dir, page):
+                return
 
             # Dockerfileのクローン処理
-            if 'dockerfiles' in project_info:
-                dockerfiles_dir = Path(docker_compose_dir) / 'dockerfiles'
-                dockerfiles_dir.mkdir(exist_ok=True)
-                for dockerfile_name, dockerfile_info in project_info['dockerfiles'].items():
-                    dockerfile_dir = dockerfiles_dir / dockerfile_name
-                    dockerfile_dir.mkdir(exist_ok=True)
-                    dockerfile_path = dockerfile_dir / 'Dockerfile'
-                    if not dockerfile_path.exists():
-                        try:
-                            show_status(page, f"{dockerfile_name}のDockerfileをクローン中...")
-                            subprocess.run(
-                                ['git', 'clone', '-b', dockerfile_info['branch'], dockerfile_info['url'], str(dockerfile_dir)],
-                                check=True
-                            )
-                            show_status(page, f"{dockerfile_name}のDockerfileをクローンしました")
-                        except subprocess.CalledProcessError as e:
-                            show_error_dialog(page, "エラー", f"{dockerfile_name}のDockerfileのクローンに失敗しました: {str(e)}")
-                            return
+            if not clone_dockerfiles(project_info, docker_compose_dir, page):
+                return
 
             # デスクトップアプリのディレクトリ構成を設定
             if 'desktop_apps' in project_info:
@@ -1427,19 +1392,12 @@ def on_container_dialog_result(e: ft.FilePickerResultEvent, page: ft.Page, conta
             return
 
 def main(page: ft.Page):
-    global containers_info, snack_bar  # snack_barをグローバル変数として宣言
+    global containers_info  # snack_barを削除
     containers_info = {}
     page.title = "Mochimaki"
     page.theme_mode = ft.ThemeMode.DARK
     page.vertical_alignment = ft.MainAxisAlignment.CENTER
     page.padding = 20
-
-    # SnackBarの初期化とグローバル変数への代入
-    snack_bar = ft.SnackBar(
-        content=ft.Text(""),
-        action="閉じる"
-    )
-    page.overlay.append(snack_bar)  # overlayに追加
 
     # スクロール可能なコンテナリストを作成
     container_list = ft.Column(
