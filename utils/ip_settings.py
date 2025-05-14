@@ -114,6 +114,40 @@ def get_device_constraints(docker_compose_dir, service_name, app_name, device_ty
         show_error_dialog(page, "設定読み込みエラー", f"デバイス制約の取得に失敗しました: {e}")
     return None
 
+def validate_ip_selections(selected_ips: list, min_connections: int, max_connections: int | None) -> tuple[list[str], set[str], dict[str, int]]:
+    """選択されたIPアドレスの検証を行う
+    
+    Args:
+        selected_ips (list): 選択されたIPアドレスのリスト
+        min_connections (int): 最小接続数
+        max_connections (int | None): 最大接続数（Noneの場合は制限なし）
+    
+    Returns:
+        tuple[list[str], set[str], dict[str, int]]: 
+            - エラーメッセージのリスト
+            - 重複しているIPアドレスのセット
+            - IPアドレスごとの出現回数の辞書
+    """
+    error_messages = []
+    
+    # 接続数の検証
+    current_count = len(selected_ips)
+    if current_count < min_connections:
+        error_msg = f"最低{min_connections}個のIPアドレスを設定してください。（現在：{current_count}個）"
+        error_messages.append(error_msg)
+    if max_connections is not None and current_count > max_connections:
+        error_msg = f"IPアドレスは最大{max_connections}個まで設定できます。（現在：{current_count}個）"
+        error_messages.append(error_msg)
+    
+    # 重複チェック
+    value_counts = {}
+    for ip in selected_ips:
+        value_counts[ip] = value_counts.get(ip, 0) + 1
+    
+    duplicates = {ip for ip, count in value_counts.items() if count > 1}
+    
+    return error_messages, duplicates, value_counts
+
 def on_edit_ip_options(e, page: ft.Page, current_ip_addresses: list, build_context_path: str, device_type: str):
     """IPアドレスの選択肢を編集するダイアログを表示する"""
     # IPアドレスリストを管理するための状態変数

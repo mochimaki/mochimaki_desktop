@@ -18,6 +18,7 @@ from utils import (
     clone_dockerfiles
 )
 from utils.container_utils import extract_service_name
+from utils.ip_settings import validate_ip_selections
 from typing import Dict, Any
 from pathlib import Path
 
@@ -581,28 +582,6 @@ def clear_error_message(error_text, scrollable_container, page):
     error_text.visible = False
     scrollable_container.border = ft.border.all(1, ft.Colors.GREY_400)
     page.update()
-
-def validate_ip_selections(selected_ips, min_connections, max_connections):
-    """選択されたIPアドレスの検証を行う"""
-    error_messages = []
-    
-    # 接続数の検証
-    current_count = len(selected_ips)
-    if current_count < min_connections:
-        error_msg = f"最低{min_connections}個のIPアドレスを設定してください。（現在：{current_count}個）"
-        error_messages.append(error_msg)
-    if max_connections is not None and current_count > max_connections:
-        error_msg = f"IPアドレスは最大{max_connections}個まで設定できます。（現在：{current_count}個）"
-        error_messages.append(error_msg)
-    
-    # 重複チェック
-    value_counts = {}
-    for ip in selected_ips:
-        value_counts[ip] = value_counts.get(ip, 0) + 1
-    
-    duplicates = {ip for ip, count in value_counts.items() if count > 1}
-    
-    return error_messages, duplicates, value_counts
 
 def update_all_dropdowns(ip_dropdowns_column, error_text, scrollable_container, apply_button, min_connections, max_connections, allow_duplicate, page):
     """全てのドロップダウンの選択肢と色を更新"""
