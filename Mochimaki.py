@@ -17,6 +17,7 @@ from utils import (
     clone_repositories,
     clone_dockerfiles
 )
+from utils.container_utils import extract_service_name
 from typing import Dict, Any
 from pathlib import Path
 
@@ -193,29 +194,6 @@ def update_container_info_in_project_info(docker_compose_dir, container_info):
         
     except Exception as e:
         print(f"project_info.json更新エラー: {e}")
-
-def extract_service_name(container_name: str, docker_compose_dir: str) -> str:
-    """コンテナ名からサービス名を抽出する"""
-    try:
-        # プロジェクト名を取得（ディレクトリ名）
-        project_name = Path(docker_compose_dir).name
-        
-        # プロジェクト名のプレフィックスを確認
-        if not container_name.startswith(f"{project_name}-"):
-            raise ValueError(f"Invalid container name format: {container_name}")
-            
-        # プロジェクト名の部分を除去
-        name_without_prefix = container_name[len(project_name)+1:]
-        
-        # 末尾の"-数字"を除去
-        import re
-        service_name = re.sub(r'-\d+$', '', name_without_prefix)
-        
-        return service_name
-            
-    except Exception as e:
-        print(f"サービス名の抽出に失敗: {e}")
-        return None
 
 def update_apps_card(container_name, container_list, page, get_settings_func):
     """アプリケーションカードを更新する"""
