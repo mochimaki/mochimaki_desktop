@@ -15,10 +15,11 @@ from utils import (
     parse_project_info,
     DockerComposeGenerator,
     clone_repositories,
-    clone_dockerfiles
+    clone_dockerfiles,
+    extract_service_name,
+    get_container_status,
+    validate_ip_selections
 )
-from utils.container_utils import extract_service_name
-from utils.ip_settings import validate_ip_selections
 from typing import Dict, Any
 from pathlib import Path
 
@@ -30,16 +31,6 @@ containers_info = {}
 global snack_bar
 global desktop_processes
 desktop_processes = {}
-
-def get_container_status(container):
-    if container['id'] and container['state'].lower() == "running":
-        return "実行中"
-    elif container['id']:
-        return "停止中"
-    elif not container['id'] and container['state'] == "not created":
-        return "未生成"
-    else:
-        return "不明"
 
 def set_card_color(card, state):
     if state == "desktop":
@@ -1252,7 +1243,6 @@ def create_symlink(src: str, dst: str, page: ft.Page = None):
             dst_path.symlink_to(src_path)
 
     except Exception as e:
-        raise Exception(f"ファイルのリンクの作成に失敗しました: {e}")
         raise Exception(f"ファイルのリンクの作成に失敗しました: {e}")
 
 def setup_desktop_apps_directory(project_root: str, desktop_apps: Dict[str, Any], page: ft.Page = None):
