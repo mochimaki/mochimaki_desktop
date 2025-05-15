@@ -5,6 +5,7 @@ from .container_utils import parse_project_info, extract_service_name, get_conta
 from .ip_settings import on_edit_ip_options, update_settings_json, validate_ip_selections
 from .generate_docker_compose import DockerComposeGenerator
 from .app_utils import get_required_data_roots
+from .file_utils import create_symlink
 
 # これにより、メインファイルでは以下のように書けるようになる：
 # from utils import show_error_dialog, on_edit_ip_options, get_container_settings, update_settings_json, parse_project_info, DockerComposeGenerator, extract_service_name, validate_ip_selections
@@ -33,5 +34,8 @@ __all__ = [
     'DockerComposeGenerator',
     
     # app_utils
-    'get_required_data_roots'
+    'get_required_data_roots',
+    
+    # file_utils
+    'create_symlink'
 ]
