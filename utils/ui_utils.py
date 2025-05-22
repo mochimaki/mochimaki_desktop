@@ -1,11 +1,17 @@
 import flet as ft
-from typing import Dict, Any, List
+from typing import Dict, Any
 from .container_utils import extract_service_name, parse_project_info
 from .settings import get_container_settings, clone_repositories, clone_dockerfiles
 from .dialogs import show_status, show_error_dialog
 from .ip_settings import update_settings_json, on_edit_ip_options, validate_ip_selections
 from .file_utils import create_symlink
 from .generate_docker_compose import DockerComposeGenerator
+from .ui import (
+    get_container_status,
+    get_container_control_icon,
+    set_card_color,
+    get_required_data_roots
+)
 from pathlib import Path
 import subprocess
 import time
@@ -17,14 +23,6 @@ import webbrowser
 
 # グローバル変数の定義
 desktop_processes: Dict[str, subprocess.Popen] = {}
-
-def get_container_control_icon(state):
-    if state.lower() == "running":
-        return ft.Icons.STOP_CIRCLE
-    elif state.lower() in ["exited", "not created", ""]:  # 停止中や未生成の状態を追加
-        return ft.Icons.PLAY_CIRCLE
-    else:
-        return ft.Icons.PLAY_CIRCLE  # デフォルトは起動アイコン
 
 def wait_for_container(container_name, docker_compose_dir, timeout=60):
     """コンテナの起動を待機する
@@ -144,62 +142,6 @@ def on_control_button_click(e, container, page, container_list, get_settings_fun
         start_container(container, page, container_list, get_settings_func)
     else:
         stop_container(container, page, container_list, get_settings_func)
-
-def get_required_data_roots(app_info: Dict[str, Any], docker_compose_dir: str) -> List[str]:
-    """アプリケーションに必要なデータルートのリストを取得する
-    
-    Args:
-        app_info (Dict[str, Any]): アプリケーション情報
-        docker_compose_dir (str): docker-compose.ymlが存在するディレクトリのパス
-        
-    Returns:
-        List[str]: データルートのリスト
-    """
-    data_roots = []
-    for data_root in app_info.get('data_roots', []):
-        if isinstance(data_root, str):
-            data_roots.append(Path(data_root).name)
-    return data_roots
-
-def set_card_color(card, state):
-    """カードの色を設定する
-    
-    Args:
-        card: カードオブジェクト
-        state (str): コンテナの状態
-    """
-    if state == "desktop":
-        color = ft.Colors.BLUE_400  # 青色（デスクトップ）
-    elif state.lower() == "running":
-        color = ft.Colors.GREEN_400  # 明るい緑（起動中）
-    elif state.lower() == "exited":
-        color = ft.Colors.GREEN_900  # 暗い緑（停止）
-    else:
-        color = ft.Colors.GREY_700  # 灰色（存在しないまたはその他の状態）
-    
-    # Containerの背景色を設定する代わりに、borderを設定
-    card.content.bgcolor = ft.Colors.TRANSPARENT  # 背景を透明に
-    card.content.border = ft.border.all(2, color)  # 輪郭線を設定
-    card.content.border_radius = ft.border_radius.all(10)  # 角の丸みを追加
-
-def get_container_status(container: Dict[str, Any]) -> str:
-    """コンテナの状態を取得する
-    
-    Args:
-        container (Dict[str, Any]): コンテナ情報
-        
-    Returns:
-        str: コンテナの状態
-    """
-    state = container.get('state', '').lower()
-    if state == "running":
-        return "起動中"
-    elif state == "exited":
-        return "停止中"
-    elif state == "not created":
-        return "未生成"
-    else:
-        return state
 
 def create_apps_card(app_type: str, data: Dict[str, Any], page: ft.Page, container_list: ft.Column, get_settings_func):
     """アプリケーションカードを生成する
