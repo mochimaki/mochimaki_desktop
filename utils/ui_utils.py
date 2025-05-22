@@ -10,7 +10,9 @@ from .ui import (
     get_container_status,
     get_container_control_icon,
     set_card_color,
-    get_required_data_roots
+    get_required_data_roots,
+    on_open_browser_click,
+    wait_for_container
 )
 from pathlib import Path
 import subprocess
@@ -23,34 +25,6 @@ import webbrowser
 
 # グローバル変数の定義
 desktop_processes: Dict[str, subprocess.Popen] = {}
-
-def wait_for_container(container_name, docker_compose_dir, timeout=60):
-    """コンテナの起動を待機する
-    
-    Args:
-        container_name (str): コンテナ名
-        docker_compose_dir (str): docker-compose.ymlが存在するディレクトリのパス
-        timeout (int): タイムアウト時間（秒）
-        
-    Returns:
-        bool: コンテナが起動した場合はTrue、タイムアウトした場合はFalse
-    """
-    start_time = time.time()
-    while time.time() - start_time < timeout:
-        try:
-            result = subprocess.run(
-                ['docker', 'inspect', '-f', '{{.State.Running}}', container_name],
-                capture_output=True,
-                text=True,
-                check=True,
-                cwd=docker_compose_dir
-            )
-            if result.stdout.strip() == 'true':
-                return True
-        except subprocess.CalledProcessError:
-            pass
-        time.sleep(1)
-    return False
 
 def start_container(container, page, container_list, get_settings_func):
     """コンテナを起動する
@@ -198,14 +172,7 @@ def create_apps_card(app_type: str, data: Dict[str, Any], page: ft.Page, contain
     return app_card
 
 def update_apps_card(container_name: str, container_list: ft.Column, page: ft.Page, get_settings_func):
-    """アプリケーションカードを更新する
-    
-    Args:
-        container_name (str): コンテナ名
-        container_list (ft.Column): コンテナリスト
-        page (ft.Page): ページオブジェクト
-        get_settings_func (function): 設定取得関数
-    """
+    """アプリケーションカードを更新する"""
     try:
         # 設定情報を取得
         settings = get_settings_func(docker_compose_dir, page)
@@ -276,7 +243,7 @@ def update_apps_card(container_name: str, container_list: ft.Column, page: ft.Pa
                         icon=ft.Icons.OPEN_IN_BROWSER,
                         tooltip="ブラウザで開く",
                         on_click=lambda e, name=container['name'], port=container_port: 
-                            on_open_browser_click(e, name, port),
+                            on_open_browser_click(e, name, port, containers_info),
                         disabled=container['state'].lower() != "running" or not host_port
                     )
                 ])
@@ -604,15 +571,6 @@ def get_app_status(app_name):
         if return_code is None:
             return "running"
     return "stopped"
-
-def on_open_browser_click(e, container_name, port):
-    """ブラウザを開くボタンがクリックされたときの処理"""
-    if container_name in containers_info and containers_info[container_name]['ports']:
-        ports = containers_info[container_name]['ports']
-        if int(port) in ports:
-            host_port = ports[int(port)]
-            url = f"http://localhost:{host_port}"
-            webbrowser.open(url)
 
 def show_ip_setting_dialog(page: ft.Page, container, app_name, device_type, container_list):
     """IPアドレス設定ダイアログを表示する"""
