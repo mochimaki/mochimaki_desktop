@@ -1,7 +1,6 @@
 import json
 import yaml
 import re
-import os
 from typing import Dict, Any
 from pathlib import Path
 from yaml.dumper import SafeDumper

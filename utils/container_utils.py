@@ -1,5 +1,4 @@
 import json
-import flet as ft
 from pathlib import Path
 import re
 
@@ -89,14 +88,3 @@ def extract_service_name(container_name: str, docker_compose_dir: str) -> str:
     except Exception as e:
         print(f"サービス名の抽出に失敗: {e}")
         return None
-
-def get_container_status(container):
-    if container['id'] and container['state'].lower() == "running":
-        return "実行中"
-    elif container['id']:
-        return "停止中"
-    elif not container['id'] and container['state'] == "not created":
-        return "未生成"
-    else:
-        return "不明"
-

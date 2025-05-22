@@ -1,4 +1,3 @@
-import os
 import json
 import subprocess
 from .dialogs import show_error_dialog, show_status
