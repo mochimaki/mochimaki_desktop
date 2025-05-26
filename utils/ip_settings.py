@@ -163,14 +163,14 @@ def on_edit_ip_options(e, page: ft.Page, current_ip_addresses: list, build_conte
     # IPアドレスのリストを表示するColumn
     ip_list_column = ft.Column(spacing=10)
 
-    def show_error_message(message):
+    def show_ip_validation_error(message):
         """エラーメッセージを表示し、適用ボタンを無効化"""
         error_text.value = message
         error_text.visible = True
         apply_button.disabled = True
         page.update()
 
-    def clear_error_message():
+    def clear_ip_validation_error():
         """エラーメッセージをクリアし、適用ボタンを有効化"""
         error_text.value = ""
         error_text.visible = False
@@ -246,7 +246,7 @@ def on_edit_ip_options(e, page: ft.Page, current_ip_addresses: list, build_conte
                 tooltip="新しいIPアドレスを追加",
                 on_click=lambda e: toggle_input_visibility(True)
             )
-            clear_error_message()  # 入力フィールドを閉じるときにエラー状態をクリア
+            clear_ip_validation_error()  # 入力フィールドを閉じるときにエラー状態をクリア
         page.update()
 
     def remove_ip_address(ip: str):
@@ -262,13 +262,13 @@ def on_edit_ip_options(e, page: ft.Page, current_ip_addresses: list, build_conte
         
         is_valid, error_message = validate_input(new_ip)
         if not is_valid:
-            show_error_message(error_message)  # エラー表示と適用ボタンの無効化
+            show_ip_validation_error(error_message)  # エラー表示と適用ボタンの無効化
             return
 
         ip_list.append(new_ip)
         toggle_input_visibility(False)
         update_ip_list()
-        clear_error_message()  # エラー状態をクリアし、適用ボタンを有効化
+        clear_ip_validation_error()  # エラー状態をクリアし、適用ボタンを有効化
 
     def save_changes(device_type):
         """変更をproject_info.jsonに保存する"""
