@@ -13,7 +13,9 @@ from .ui import (
     get_required_data_roots,
     on_open_browser_click,
     wait_for_container,
-    create_error_text
+    create_error_text,
+    show_error_message,
+    clear_error_message
 )
 from pathlib import Path
 import subprocess
@@ -1067,13 +1069,6 @@ def update_all_dropdowns(ip_dropdowns_column, error_text, scrollable_container, 
         import traceback
         print(traceback.format_exc())
 
-def show_error_message(error_text, scrollable_container, message, page):
-    """エラーメッセージを表示"""
-    error_text.value = message
-    error_text.visible = True
-    scrollable_container.border = ft.border.all(1, ft.Colors.RED_400)
-    page.update()
-
 def setup_desktop_apps_directory(project_root: str, desktop_apps: Dict[str, Any], page: ft.Page = None):
     try:
         desktop_apps_dir = Path(project_root) / 'desktop_apps'
@@ -1166,13 +1161,6 @@ def on_container_dialog_result(e: ft.FilePickerResultEvent, page: ft.Page, conta
         except Exception as e:
             show_error_dialog(page, "エラー", f"セットアップに失敗しました: {str(e)}")
             return
-
-def clear_error_message(error_text, scrollable_container, page):
-    """エラーメッセージをクリア"""
-    error_text.value = ""
-    error_text.visible = False
-    scrollable_container.border = ft.border.all(1, ft.Colors.GREY_400)
-    page.update()
 
 def refresh_container_status(page, container_list):
     global docker_compose_dir, containers_info
