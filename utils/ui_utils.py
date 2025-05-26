@@ -12,7 +12,8 @@ from .ui import (
     set_card_color,
     get_required_data_roots,
     on_open_browser_click,
-    wait_for_container
+    wait_for_container,
+    create_error_text
 )
 from pathlib import Path
 import subprocess
@@ -973,15 +974,6 @@ def update_container_info_in_project_info(docker_compose_dir, container_info):
         
     except Exception as e:
         print(f"project_info.json更新エラー: {e}")
-
-def create_error_text():
-    """エラーメッセージ用のテキストコントロールを作成"""
-    return ft.Text(
-        value="",
-        color=ft.Colors.RED_400,
-        size=12,
-        visible=False
-    )
 
 def update_all_dropdowns(ip_dropdowns_column, error_text, scrollable_container, apply_button, min_connections, max_connections, allow_duplicate, page):
     """全てのドロップダウンの選択肢と色を更新"""
