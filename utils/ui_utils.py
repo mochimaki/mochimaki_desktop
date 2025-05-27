@@ -15,7 +15,8 @@ from .ui import (
     create_error_text,
     show_error_message,
     update_all_dropdowns,
-    setup_desktop_apps_directory
+    setup_desktop_apps_directory,
+    create_start_command
 )
 from pathlib import Path
 import subprocess
@@ -931,16 +932,6 @@ def show_data_path_dialog(page: ft.Page, container_name: str, app_name: str, dat
         )
         page.dialog.open = True
         page.update()
-
-def create_start_command(app_info):
-    """アプリケーションの起動コマンドを生成する"""
-    args = []
-    for arg_name, arg_value in app_info.get('args', {}).items():
-        args.append(f"{arg_name} {arg_value}")
-    args_str = " ".join(args)
-    command = f"{app_info['interpreter']} {app_info['main']} {args_str}"
-    print(f"実行コマンド: {command}")
-    return command
 
 def update_container_info_in_project_info(docker_compose_dir, container_info):
     """project_info.jsonにコンテナIDとイメージ情報を反映する"""

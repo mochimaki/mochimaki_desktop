@@ -7,6 +7,16 @@ import flet as ft
 import json
 from ..file_utils import create_symlink
 
+def create_start_command(app_info):
+    """アプリケーションの起動コマンドを生成する"""
+    args = []
+    for arg_name, arg_value in app_info.get('args', {}).items():
+        args.append(f"{arg_name} {arg_value}")
+    args_str = " ".join(args)
+    command = f"{app_info['interpreter']} {app_info['main']} {args_str}"
+    print(f"実行コマンド: {command}")
+    return command
+
 def setup_desktop_apps_directory(project_root: str, desktop_apps: Dict[str, Any], page: ft.Page = None):
     try:
         desktop_apps_dir = Path(project_root) / 'desktop_apps'
