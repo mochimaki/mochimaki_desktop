@@ -8,7 +8,7 @@ from .ip_utils import create_error_text, show_error_message, clear_error_message
 from .data_path_utils import get_required_data_roots
 from .browser_utils import on_open_browser_click
 from .event_handlers import *
-from .app_utils import *
+from .app_utils import update_container_info_in_project_info
 
 __all__ = [
     'setup_desktop_apps_directory',
@@ -23,5 +23,6 @@ __all__ = [
     'clear_error_message',
     'update_all_dropdowns',
     'get_required_data_roots',
-    'on_open_browser_click'
+    'on_open_browser_click',
+    'update_container_info_in_project_info'
 ] 
