@@ -16,7 +16,8 @@ from .ui import (
     show_error_message,
     update_all_dropdowns,
     setup_desktop_apps_directory,
-    create_start_command
+    create_start_command,
+    get_app_status
 )
 from pathlib import Path
 import subprocess
@@ -225,7 +226,7 @@ def update_apps_card(container_name: str, container_list: ft.Column, page: ft.Pa
             # コントロールボタンまたはブラウザボタンの作成
             control_elements = []
             if is_desktop:
-                current_state = get_app_status(app_name)
+                current_state = get_app_status(app_name, desktop_processes)
                 control_elements.append(
                     ft.IconButton(
                         icon=ft.Icons.STOP if current_state == "running" else ft.Icons.PLAY_ARROW,
@@ -412,7 +413,7 @@ def update_apps_card(container_name: str, container_list: ft.Column, page: ft.Pa
 
 def on_app_control(e, app_name, app_info, button, page):
     """アプリケーションの起動/停止制御"""
-    current_state = get_app_status(app_name)
+    current_state = get_app_status(app_name, desktop_processes)
     
     if current_state == "running":
         try:
@@ -564,15 +565,6 @@ def get_container_info(docker_compose_dir, page: ft.Page):
     except Exception as e:
         show_error_dialog(page, "エラー", f"予期せぬエラーが発生しました: {e}")
         return []
-
-def get_app_status(app_name):
-    """アプリケーションの状態を確認"""
-    if app_name in desktop_processes:
-        process = desktop_processes[app_name]
-        return_code = process.poll()
-        if return_code is None:
-            return "running"
-    return "stopped"
 
 def show_ip_setting_dialog(page: ft.Page, container, app_name, device_type, container_list):
     """IPアドレス設定ダイアログを表示する"""

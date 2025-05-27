@@ -7,6 +7,15 @@ import flet as ft
 import json
 from ..file_utils import create_symlink
 
+def get_app_status(app_name: str, desktop_processes: Dict[str, Any]) -> str:
+    """アプリケーションの状態を確認"""
+    if app_name in desktop_processes:
+        process = desktop_processes[app_name]
+        return_code = process.poll()
+        if return_code is None:
+            return "running"
+    return "stopped"
+
 def create_start_command(app_info):
     """アプリケーションの起動コマンドを生成する"""
     args = []
