@@ -5,7 +5,11 @@ from pathlib import Path
 from typing import Dict, Any
 import flet as ft
 import json
+import subprocess
+import os
+import signal
 from ..file_utils import create_symlink
+from ..dialogs import show_status, show_error_dialog
 
 def get_app_status(app_name: str, desktop_processes: Dict[str, Any]) -> str:
     """アプリケーションの状態を確認"""
@@ -75,3 +79,70 @@ def setup_desktop_apps_directory(project_root: str, desktop_apps: Dict[str, Any]
 
     except Exception as e:
         raise Exception(f"デスクトップアプリディレクトリの設定に失敗しました: {e}") 
+
+def on_app_control(e, app_name, app_info, button, page, desktop_processes, docker_compose_dir):
+    """アプリケーションの起動/停止制御
+    
+    Args:
+        e: イベントオブジェクト
+        app_name (str): アプリケーション名
+        app_info (Dict[str, Any]): アプリケーション情報
+        button (ft.IconButton): 制御ボタン
+        page (ft.Page): ページオブジェクト
+        desktop_processes (Dict[str, subprocess.Popen]): 実行中のプロセス情報
+        docker_compose_dir (str): Docker Composeディレクトリのパス
+    """
+    current_state = get_app_status(app_name, desktop_processes)
+    
+    if current_state == "running":
+        try:
+            # プロセスグループ全体を終了させる
+            process = desktop_processes[app_name]
+            if os.name == 'nt':  # Windows
+                subprocess.run(['taskkill', '/F', '/T', '/PID', str(process.pid)])
+            else:  # Unix系
+                os.killpg(os.getpgid(process.pid), signal.SIGTERM)
+                
+            # プロセスの終了を確認
+            try:
+                process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                if os.name == 'nt':
+                    subprocess.run(['taskkill', '/F', '/T', '/PID', str(process.pid)])
+                else:
+                    os.killpg(os.getpgid(process.pid), signal.SIGKILL)
+            
+            del desktop_processes[app_name]
+            button.icon = ft.Icons.PLAY_ARROW
+            show_status(page, f"アプリケーション {app_name} を停止しました")
+        except Exception as e:
+            show_error_dialog(page, "エラー", f"アプリケーションの停止に失敗しました: {e}")
+    else:
+        # 起動処理
+        try:
+            # プログラムのディレクトリを取得
+            app_dir = Path(docker_compose_dir) / 'desktop_apps' / app_name
+            program_dir = app_dir / Path(app_info['main']).parent.name
+            
+            cmd = create_start_command(app_info)
+            if os.name == 'nt':  # Windows
+                process = subprocess.Popen(
+                    cmd,
+                    shell=True,
+                    creationflags=subprocess.CREATE_NEW_PROCESS_GROUP,
+                    cwd=str(program_dir)  # Popenはstr型のパスを期待するため変換
+                )
+            else:  # Unix系
+                process = subprocess.Popen(
+                    cmd,
+                    shell=True,
+                    preexec_fn=os.setsid,
+                    cwd=str(program_dir)  # Popenはstr型のパスを期待するため変換
+                )
+            desktop_processes[app_name] = process
+            button.icon = ft.Icons.STOP
+            show_status(page, f"アプリケーション {app_name} を起動しました")
+        except Exception as e:
+            show_error_dialog(page, "エラー", f"アプリケーションの起動に失敗しました: {e}")
+    
+    page.update() 

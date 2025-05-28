@@ -16,14 +16,13 @@ from .ui import (
     show_error_message,
     update_all_dropdowns,
     setup_desktop_apps_directory,
-    create_start_command,
     get_app_status,
-    update_container_info_in_project_info
+    update_container_info_in_project_info,
+    on_app_control
 )
 from pathlib import Path
 import subprocess
 import os
-import signal
 import json
 import re
 
@@ -233,7 +232,7 @@ def update_apps_card(container_name: str, container_list: ft.Column, page: ft.Pa
                         icon=ft.Icons.STOP if current_state == "running" else ft.Icons.PLAY_ARROW,
                         tooltip="起動/停止",
                         on_click=lambda e, name=app_name, info=app_info, btn=None: 
-                            on_app_control(e, name, info, e.control, page)
+                            on_app_control(e, name, info, e.control, page, desktop_processes, docker_compose_dir)
                     )
                 )
             else:
@@ -322,7 +321,7 @@ def update_apps_card(container_name: str, container_list: ft.Column, page: ft.Pa
                                                     icon=ft.icons.FOLDER_OPEN,
                                                     tooltip="パスを設定",
                                                     on_click=lambda e, container_name=container_name, a=app_name, d=data_root: 
-                                                        show_data_path_dialog(page, container_name, a, d, container_list)
+                                                        show_data_path_dialog(e, page, container_name, a, d, container_list)
                                                 )
                                             ]),
                                             padding=5,
@@ -411,63 +410,6 @@ def update_apps_card(container_name: str, container_list: ft.Column, page: ft.Pa
 
     except Exception as e:
         print(f"カードの更新でエラーが発生: {e}")
-
-def on_app_control(e, app_name, app_info, button, page):
-    """アプリケーションの起動/停止制御"""
-    current_state = get_app_status(app_name, desktop_processes)
-    
-    if current_state == "running":
-        try:
-            # プロセスグループ全体を終了させる
-            process = desktop_processes[app_name]
-            if os.name == 'nt':  # Windows
-                subprocess.run(['taskkill', '/F', '/T', '/PID', str(process.pid)])
-            else:  # Unix系
-                os.killpg(os.getpgid(process.pid), signal.SIGTERM)
-                
-            # プロセスの終了を確認
-            try:
-                process.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                if os.name == 'nt':
-                    subprocess.run(['taskkill', '/F', '/T', '/PID', str(process.pid)])
-                else:
-                    os.killpg(os.getpgid(process.pid), signal.SIGKILL)
-            
-            del desktop_processes[app_name]
-            button.icon = ft.Icons.PLAY_ARROW
-            show_status(page, f"アプリケーション {app_name} を停止しました")
-        except Exception as e:
-            show_error_dialog(page, "エラー", f"アプリケーションの停止に失敗しました: {e}")
-    else:
-        # 起動処理
-        try:
-            # プログラムのディレクトリを取得
-            app_dir = Path(docker_compose_dir) / 'desktop_apps' / app_name
-            program_dir = app_dir / Path(app_info['main']).parent.name
-            
-            cmd = create_start_command(app_info)
-            if os.name == 'nt':  # Windows
-                process = subprocess.Popen(
-                    cmd,
-                    shell=True,
-                    creationflags=subprocess.CREATE_NEW_PROCESS_GROUP,
-                    cwd=str(program_dir)  # Popenはstr型のパスを期待するため変換
-                )
-            else:  # Unix系
-                process = subprocess.Popen(
-                    cmd,
-                    shell=True,
-                    preexec_fn=os.setsid,
-                    cwd=str(program_dir)  # Popenはstr型のパスを期待するため変換
-                )
-            desktop_processes[app_name] = process
-            button.icon = ft.Icons.STOP
-            show_status(page, f"アプリケーション {app_name} を起動しました")
-        except Exception as e:
-            show_error_dialog(page, "エラー", f"アプリケーションの起動に失敗しました: {e}")
-    
-    page.update()
 
 def get_container_info(docker_compose_dir, page: ft.Page):
     try:
@@ -814,7 +756,7 @@ container_list: {container_list}
     except Exception as e:
         show_error_dialog(page, "エラー", f"IPアドレス設定ダイアログの表示に失敗しました: {e}")
 
-def show_data_path_dialog(page: ft.Page, container_name: str, app_name: str, data_root: str, container_list: ft.Column):
+def show_data_path_dialog(e, page, container_name: str, app_name: str, data_root: str, container_list: ft.Column):
     """データパス設定ダイアログを表示する"""
     try:
         def on_dialog_result(e: ft.FilePickerResultEvent):
