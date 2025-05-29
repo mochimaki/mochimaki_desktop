@@ -17,8 +17,8 @@ from .ui import (
     update_all_dropdowns,
     setup_desktop_apps_directory,
     get_app_status,
-    update_container_info_in_project_info,
-    on_app_control
+    on_app_control,
+    container_info_manager
 )
 from pathlib import Path
 import subprocess
@@ -27,7 +27,8 @@ import json
 import re
 
 # グローバル変数の定義
-desktop_processes: Dict[str, subprocess.Popen] = {}
+docker_compose_dir = Path(__file__).parent.parent.parent / "docker-compose"
+desktop_processes = {}
 
 def start_container(container, page, container_list, get_settings_func):
     """コンテナを起動する
@@ -55,10 +56,10 @@ def start_container(container, page, container_list, get_settings_func):
             return
 
         # コンテナ情報を再取得
-        get_container_info(docker_compose_dir, page)
+        container_info_manager.get_container_info(docker_compose_dir, page)
         
         # 更新されたコンテナ情報を使用してカードを更新
-        if container['name'] in containers_info:
+        if container['name'] in container_info_manager._containers_info:
             update_apps_card(container['name'], container_list, page, get_settings_func)
         
         page.update()
@@ -86,10 +87,10 @@ def stop_container(container, page, container_list, get_settings_func):
         subprocess.check_call(['docker-compose', 'stop', service_name], cwd=docker_compose_dir)
         
         # コンテナ情報を再取得
-        get_container_info(docker_compose_dir, page)
+        container_info_manager.get_container_info(docker_compose_dir, page)
         
         # 更新されたコンテナ情報を使用してカードを更新
-        if container['name'] in containers_info:
+        if container['name'] in container_info_manager._containers_info:
             update_apps_card(container['name'], container_list, page, get_settings_func)
         
         show_status(page, f"コンテナ {container['name']} を停止しました。")
@@ -190,9 +191,9 @@ def update_apps_card(container_name: str, container_list: ft.Column, page: ft.Pa
             if container_list.controls:
                 target_card = container_list.controls[0]
         else:
-            if container_name not in containers_info:
+            if container_name not in container_info_manager._containers_info:
                 return
-            container = containers_info[container_name]
+            container = container_info_manager._containers_info[container_name]
             for control in container_list.controls:
                 if isinstance(control, ft.Card) and control.data and control.data.get('name') == container_name:
                     target_card = control
@@ -246,7 +247,7 @@ def update_apps_card(container_name: str, container_list: ft.Column, page: ft.Pa
                         icon=ft.Icons.OPEN_IN_BROWSER,
                         tooltip="ブラウザで開く",
                         on_click=lambda e, name=container['name'], port=container_port: 
-                            on_open_browser_click(e, name, port, containers_info),
+                            on_open_browser_click(e, name, port, container_info_manager._containers_info),
                         disabled=container['state'].lower() != "running" or not host_port
                     )
                 ])
@@ -410,104 +411,6 @@ def update_apps_card(container_name: str, container_list: ft.Column, page: ft.Pa
 
     except Exception as e:
         print(f"カードの更新でエラーが発生: {e}")
-
-def get_container_info(docker_compose_dir, page: ft.Page):
-    try:
-        os.chdir(docker_compose_dir)
-        
-        # プロジェクト名を取得（ディレクトリ名）
-        project_name = Path(docker_compose_dir).name
-        
-        # docker-compose.ymlで定義されているサービスを取得
-        result = subprocess.run(['docker-compose', 'config', '--services'], 
-                                capture_output=True, text=True, check=True)
-        services = result.stdout.strip().split('\n')
-        services = [s for s in services if s]
-
-        # 実際のコンテナ情報を取得（イメージ情報を含める）
-        result = subprocess.run([
-            'docker-compose',
-            'ps',
-            '-a',
-            '--format', 
-            '{"Name":"{{ .Name }}","ID":"{{ .ID }}","State":"{{ .State }}","Ports":"{{ .Ports }}","Image":"{{ .Image }}"}'
-        ], capture_output=True, text=True, check=True)
-        
-        compose_output = result.stdout
-        
-        container_info = []
-        json_data = '[' + ','.join(line for line in compose_output.strip().split('\n') if line.strip()) + ']'
-
-        if json_data:
-            try:
-                containers = json.loads(json_data)
-                for container in containers:
-                    name = container.get('Name', '')
-                    short_id = container.get('ID', '')
-                    state = container.get('State', '')
-                    ports_str = container.get('Ports', '')
-                    image = container.get('Image', '')  # イメージ情報を取得
-                    
-                    # ポート情報をパース
-                    ports = {}
-                    if ports_str:
-                        port_matches = re.findall(r'(\d+)->(\d+)/tcp', ports_str)
-                        for host_port, container_port in port_matches:
-                            ports[int(container_port)] = int(host_port)
-                    
-                    container_info.append({
-                        'name': name,
-                        'id': short_id,
-                        'ports': ports,
-                        'state': state,
-                        'image': image,  # イメージ情報を追加
-                        'docker_compose_dir': docker_compose_dir
-                    })
-            except json.JSONDecodeError as e:
-                print(f"JSONデコードエラー。データ: {json_data}. エラー: {e}")
-            except Exception as e:
-                print(f"コンテナ情報のパースエラー。データ: {json_data}. エラー: {e}")
-
-        # サービスリストにないコンテナを追加
-        for service in services:
-            if not any(c['name'] == f"{project_name}-{service}-1" for c in container_info):
-                # project_info.jsonから既存のimage情報を取得
-                image = ''
-                try:
-                    project_info_path = Path(docker_compose_dir) / 'project_info.json'
-                    with project_info_path.open('r') as f:
-                        project_info = json.load(f)
-                        if service in project_info.get('services', {}):
-                            image = project_info['services'][service].get('image', '')
-                except Exception as e:
-                    print(f"project_info.jsonからimage情報の取得に失敗: {e}")
-
-                container_info.append({
-                    'name': f"{project_name}-{service}-1",
-                    'id': '',
-                    'ports': {},
-                    'state': 'not created',
-                    'image': image,  # 既存のimage情報を使用
-                    'docker_compose_dir': docker_compose_dir
-                })
-
-        # コンテナIDとイメージをproject_info.jsonに反映
-        update_container_info_in_project_info(docker_compose_dir, container_info)
-        
-        # project_info.jsonを再パース
-        parse_project_info(docker_compose_dir)
-
-        # グローバル変数 containers_info を更新
-        global containers_info
-        containers_info = {container['name']: container for container in container_info}
-
-        return container_info
-    except subprocess.CalledProcessError as e:
-        show_error_dialog(page, "Docker Composeエラー", f"Docker Composeコマンドの実行中にエラーが発生しました: {e}\n\n標準エラー出力: {e.stderr}")
-        return []
-    except Exception as e:
-        show_error_dialog(page, "エラー", f"予期せぬエラーが発生しました: {e}")
-        return []
 
 def show_ip_setting_dialog(page: ft.Page, container, app_name, device_type, container_list):
     """IPアドレス設定ダイアログを表示する"""
@@ -870,7 +773,7 @@ def show_data_path_dialog(e, page, container_name: str, app_name: str, data_root
 
 def on_container_dialog_result(e: ft.FilePickerResultEvent, page: ft.Page, container_list: ft.Column):
     """ビルドコンテキストが選択されたときの処理"""
-    global docker_compose_dir, containers_info
+    global docker_compose_dir
     if e.path:
         docker_compose_dir = e.path
         page.title = Path(e.path).name
@@ -912,7 +815,7 @@ def on_container_dialog_result(e: ft.FilePickerResultEvent, page: ft.Page, conta
             return
 
 def refresh_container_status(page, container_list):
-    global docker_compose_dir, containers_info
+    global docker_compose_dir
     if not docker_compose_dir:
         show_status(page, "ビルドコンテキストが選択されていません。")
         page.update()
@@ -936,7 +839,7 @@ def refresh_container_status(page, container_list):
         # コンテナサービスが存在する場合のみコンテナ関連の処理を実行
         if 'services' in settings and settings['services']:
             parse_project_info(docker_compose_dir)
-            containers = get_container_info(docker_compose_dir, page)
+            containers = container_info_manager.get_container_info(docker_compose_dir, page)
 
             if containers:
                 for container in containers:

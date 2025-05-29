@@ -7,13 +7,9 @@ from utils import (
 # グローバル変数の宣言
 global docker_compose_dir
 docker_compose_dir = None
-global containers_info
-containers_info = {}
 global snack_bar
 
 def main(page: ft.Page):
-    global containers_info  # snack_barを削除
-    containers_info = {}
     page.title = "Mochimaki"
     page.theme_mode = ft.ThemeMode.DARK
     page.vertical_alignment = ft.MainAxisAlignment.CENTER
