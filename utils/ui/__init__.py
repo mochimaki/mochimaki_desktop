@@ -4,7 +4,7 @@ UI関連のユーティリティモジュール
 from .container_operations import get_container_status, wait_for_container, container_info_manager
 from .ui_components import get_container_control_icon, set_card_color
 from .desktop_apps import setup_desktop_apps_directory, get_app_status, on_app_control
-from .ip_utils import create_error_text, show_error_message, update_all_dropdowns
+from .ip_utils import create_error_text, show_error_message, update_all_dropdowns, show_ip_setting_dialog
 from .data_path_utils import get_required_data_roots
 from .browser_utils import on_open_browser_click
 
@@ -21,5 +21,6 @@ __all__ = [
     'setup_desktop_apps_directory',
     'get_app_status',
     'on_app_control',
-    'container_info_manager'
+    'container_info_manager',
+    'show_ip_setting_dialog'
 ] 

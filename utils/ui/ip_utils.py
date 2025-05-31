@@ -3,6 +3,11 @@ IP設定に関する関数を提供するモジュール
 """
 import flet as ft
 from ..ip_settings import validate_ip_selections
+from ..container_utils import extract_service_name
+from ..dialogs import show_status, show_error_dialog
+from ..ip_settings import update_settings_json
+from pathlib import Path
+import re
 
 def create_error_text():
     """エラーメッセージ用のテキストコントロールを作成"""
@@ -117,4 +122,112 @@ def update_all_dropdowns(ip_dropdowns_column, error_text, scrollable_container, 
     except Exception as e:
         print(f"update_all_dropdowns でエラーが発生: {e}")
         import traceback
-        print(traceback.format_exc()) 
+        print(traceback.format_exc())
+
+def show_ip_setting_dialog(container, page, container_list, get_settings_func):
+    """IP設定ダイアログを表示する
+    
+    Args:
+        container (Dict[str, Any]): コンテナ情報
+        page (ft.Page): ページオブジェクト
+        container_list (ft.Column): コンテナリスト
+        get_settings_func (function): 設定取得関数
+    """
+    try:
+        # サービス名を抽出
+        service_name = extract_service_name(container['name'], Path(__file__).parent.parent.parent / "docker-compose")
+        if not service_name:
+            raise ValueError("サービス名の抽出に失敗しました")
+
+        # 設定を取得
+        settings = get_settings_func(Path(__file__).parent.parent.parent / "docker-compose", page)
+        if not settings:
+            return
+
+        # コンテナの設定を取得
+        container_settings = next((s for s in settings['services'] if s['name'] == service_name), None)
+        if not container_settings:
+            raise ValueError(f"コンテナ {service_name} の設定が見つかりません")
+
+        # 現在のIP設定を取得
+        current_ip = container_settings.get('ip', '')
+        current_netmask = container_settings.get('netmask', '')
+        current_gateway = container_settings.get('gateway', '')
+
+        # 入力フィールド
+        ip_field = ft.TextField(
+            label="IPアドレス",
+            value=current_ip,
+            width=300
+        )
+        netmask_field = ft.TextField(
+            label="サブネットマスク",
+            value=current_netmask,
+            width=300
+        )
+        gateway_field = ft.TextField(
+            label="デフォルトゲートウェイ",
+            value=current_gateway,
+            width=300
+        )
+
+        def validate_ip(ip: str) -> bool:
+            """IPアドレスの形式を検証する"""
+            pattern = r'^(\d{1,3}\.){3}\d{1,3}$'
+            if not re.match(pattern, ip):
+                return False
+            return all(0 <= int(x) <= 255 for x in ip.split('.'))
+
+        def on_save(e):
+            """保存ボタンのクリックハンドラ"""
+            try:
+                # 入力値の検証
+                if not validate_ip(ip_field.value):
+                    raise ValueError("IPアドレスの形式が正しくありません")
+                if not validate_ip(netmask_field.value):
+                    raise ValueError("サブネットマスクの形式が正しくありません")
+                if gateway_field.value and not validate_ip(gateway_field.value):
+                    raise ValueError("デフォルトゲートウェイの形式が正しくありません")
+
+                # 設定を更新
+                container_settings['ip'] = ip_field.value
+                container_settings['netmask'] = netmask_field.value
+                container_settings['gateway'] = gateway_field.value
+
+                # 設定ファイルを更新
+                update_settings_json(settings, Path(__file__).parent.parent.parent / "docker-compose", page)
+
+                # カードを更新
+                from ..ui_utils import update_apps_card
+                update_apps_card(container['name'], container_list, page, get_settings_func)
+
+                # ダイアログを閉じる
+                page.dialog.open = False
+                page.update()
+
+                show_status(page, "IP設定を更新しました。")
+            except Exception as e:
+                show_error_dialog(page, "エラー", str(e))
+
+        # ダイアログの作成
+        dialog = ft.AlertDialog(
+            title=ft.Text(f"IP設定 - {container['name']}"),
+            content=ft.Column([
+                ip_field,
+                netmask_field,
+                gateway_field
+            ], spacing=10),
+            actions=[
+                ft.TextButton("キャンセル", on_click=lambda e: setattr(page.dialog, 'open', False)),
+                ft.TextButton("保存", on_click=on_save)
+            ],
+            actions_alignment=ft.MainAxisAlignment.END
+        )
+
+        # ダイアログを表示
+        page.dialog = dialog
+        dialog.open = True
+        page.update()
+
+    except Exception as e:
+        show_error_dialog(page, "エラー", str(e)) 
