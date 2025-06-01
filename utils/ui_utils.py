@@ -22,9 +22,7 @@ from .ui import (
 )
 from pathlib import Path
 import subprocess
-import os
 import json
-import re
 
 # グローバル変数の定義
 docker_compose_dir = Path(__file__).parent.parent.parent / "docker-compose"
