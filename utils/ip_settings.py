@@ -2,6 +2,7 @@ import json
 import flet as ft
 from .dialogs import show_error_dialog
 from pathlib import Path
+from .container_utils import parse_project_info
 
 def is_valid_ipv4(ip: str) -> bool:
     """IPv4アドレスの形式が正しいかチェックする"""
@@ -44,7 +45,6 @@ def update_settings_json(docker_compose_dir, new_targets, service_name, app_name
                     json.dump(settings, f, indent=2)
                 
                 # container_infoディレクトリの更新
-                from .container_utils import parse_project_info
                 parse_project_info(docker_compose_dir)
                 
                 print(f"{app_name}の{device_type}のtargetを更新しました: {new_targets}")
@@ -298,7 +298,6 @@ def on_edit_ip_options(e, page: ft.Page, current_ip_addresses: list, build_conte
                 json.dump(settings, f, indent=2)
 
             # 設定を再パース
-            from .container_utils import parse_project_info
             parse_project_info(build_context_path)
             return True
         except Exception as e:
