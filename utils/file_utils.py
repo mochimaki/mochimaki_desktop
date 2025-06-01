@@ -1,5 +1,6 @@
 import os
 import subprocess
+import shutil
 from pathlib import Path
 from .dialogs import show_error_dialog
 
@@ -15,7 +16,6 @@ def create_symlink(src: str, dst: str, page = None):
         Exception: シンボリックリンクの作成に失敗した場合
     """
     try:
-        import shutil
         src_path = Path(src)
         dst_path = Path(dst)
         
