@@ -251,7 +251,7 @@ def update_apps_card(container_name: str, container_list: ft.Column, page: ft.Pa
                 ])
 
             # データルートを取得
-            data_roots = get_required_data_roots(app_info, docker_compose_dir)
+            data_roots = get_required_data_roots(app_info)
 
             # アプリケーションカード
             app_card = ft.Card(

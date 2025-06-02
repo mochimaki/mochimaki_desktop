@@ -4,12 +4,11 @@
 from pathlib import Path
 from typing import Dict, Any, List
 
-def get_required_data_roots(app_info: Dict[str, Any], docker_compose_dir: str) -> List[str]:
+def get_required_data_roots(app_info: Dict[str, Any]) -> List[str]:
     """アプリケーションに必要なデータルートのリストを取得する
     
     Args:
         app_info (Dict[str, Any]): アプリケーション情報
-        docker_compose_dir (str): docker-compose.ymlが存在するディレクトリのパス
         
     Returns:
         List[str]: データルートのリスト
