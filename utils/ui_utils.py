@@ -582,8 +582,8 @@ container_list: {container_list}
         def close_dialog(e):
             """ダイアログを閉じる"""
             dialog.open = False
-            page.update()
             page.overlay.remove(dialog)
+            page.update()
 
         # 既存のターゲットIPアドレスの行を作成
         for target in current_targets:
@@ -664,24 +664,14 @@ def show_data_path_dialog(e, page, container_name: str, app_name: str, data_root
             if e.path:
                 # 選択されたディレクトリ名を取得
                 selected_dir_name = Path(e.path).name
-                
                 # 選択されたディレクトリ名が対象と異なる場合は警告
                 if selected_dir_name != data_root:
-                    def close_dialog(e):
-                        page.dialog.open = False
-                        page.dialog = None
-                        page.update()
-
-                    page.dialog = ft.AlertDialog(
-                        title=ft.Text("警告"),
-                        content=ft.Text(f"選択されたディレクトリ名 '{selected_dir_name}' が\n"
-                                      f"対象のディレクトリ名 '{data_root}' と異なります。"),
-                        actions=[
-                            ft.TextButton("OK", on_click=close_dialog)
-                        ]
+                    show_error_dialog(
+                        page,
+                        "警告",
+                        f"選択されたディレクトリ名 '{selected_dir_name}' が\n"
+                        f"対象のディレクトリ名 '{data_root}' と異なります。"
                     )
-                    page.dialog.open = True
-                    page.update()
                     return
 
                 # project_info.jsonを読み込む
@@ -754,20 +744,11 @@ def show_data_path_dialog(e, page, container_name: str, app_name: str, data_root
 
     except Exception as e:
         print(f"データパス設定ダイアログでエラーが発生: {e}")
-        def close_error_dialog(e):
-            page.dialog.open = False
-            page.dialog = None
-            page.update()
-
-        page.dialog = ft.AlertDialog(
-            title=ft.Text("エラー"),
-            content=ft.Text(f"データパス設定中にエラーが発生しました:\n{str(e)}"),
-            actions=[
-                ft.TextButton("OK", on_click=close_error_dialog)
-            ]
+        show_error_dialog(
+            page,
+            "エラー",
+            f"データパス設定中にエラーが発生しました:\n{str(e)}"
         )
-        page.dialog.open = True
-        page.update()
 
 def on_container_dialog_result(e: ft.FilePickerResultEvent, page: ft.Page, container_list: ft.Column):
     """ビルドコンテキストが選択されたときの処理"""
