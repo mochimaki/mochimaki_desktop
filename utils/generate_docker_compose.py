@@ -86,22 +86,28 @@ class DockerComposeGenerator:
 
     def _generate_start_commands(self, user: str, apps: Dict[str, Any]) -> str:
         commands = []
-        for app_name, app_info in apps.items():
-            app_dir = f"/home/{user}/apps/{app_name}/{Path(app_info['main']).stem}"
+        app_items = list(apps.items())
+        for i, (app_name, app_info) in enumerate(app_items):
+            app_dir = str(Path("/home") / user / "apps" / app_name / Path(app_info['main']).stem).replace("\\", "/")
             venv_name = app_info['venv']
-            venv_path = f"/home/{user}/venv/{venv_name}"
-            is_last = list(apps.keys())[-1] == app_name
-            background = "&" if not is_last else ""
-
+            venv_path = str(Path("/home") / user / "venv" / venv_name).replace("\\", "/")
             args = []
             for arg_name, arg_value in app_info.get('args', {}).items():
                 args.append(f"{arg_name} {arg_value}")
             args_str = " ".join(args)
-
-            commands.append(
-                f"cd {app_dir}/ &&\n"
-                f"PYTHONPATH=${{PYTHONPATH_{venv_name}}} {venv_path}/bin/python3 ./{app_info['main']} {args_str} {background}"
-            )
+            # シグナルファイル生成コマンド（signalディレクトリに出力）
+            commands.append(f"echo '{app_name}_startup' > /home/{user}/signal/{app_name}_startup_signal.txt")
+            # cdコマンドとアプリ起動コマンドの間に改行を入れる
+            if i < len(app_items) - 1:
+                commands.append(
+                    f"cd {app_dir}/ &&\n"
+                    f"PYTHONPATH=${{PYTHONPATH_{venv_name}}} {venv_path}/bin/python3 ./{app_info['main']} {args_str} &"
+                )
+            else:
+                commands.append(
+                    f"cd {app_dir}/ &&\n"
+                    f"PYTHONPATH=${{PYTHONPATH_{venv_name}}} {venv_path}/bin/python3 ./{app_info['main']} {args_str}"
+                )
         return "\n".join(commands)
 
     def _generate_service_command(self, user: str, apps: Dict[str, Any]) -> str:
@@ -146,7 +152,8 @@ class DockerComposeGenerator:
     def _generate_volumes(self, user: str, apps: Dict[str, Any], service_name: str) -> list:
         volumes = [
             f"./version_info/{service_name}:/home/{user}/version_info",
-            f"./container_info/{service_name}/container_info.json:/home/{user}/container_info.json"
+            f"./container_info/{service_name}/container_info.json:/home/{user}/container_info.json",
+            f"./signal/{service_name}:/home/{user}/signal"  # シグナル用ボリュームを追加
         ]
         
         for app_name, app_info in apps.items():
