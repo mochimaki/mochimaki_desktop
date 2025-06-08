@@ -87,14 +87,6 @@ def stop_container(container, page, container_list, get_settings_func):
         # コンテナ情報を再取得
         container_info_manager.get_container_info(docker_compose_dir, page)
         
-        # コンテナが停止したことを確認し、シグナルファイルを消去
-        if (container['name'] in container_info_manager._containers_info and 
-            container_info_manager._containers_info[container['name']]['state'].lower() == 'exited'):
-            signal_dir = Path(docker_compose_dir) / 'signal' / service_name
-            if signal_dir.exists():
-                for signal_file in signal_dir.glob('*_startup_signal.txt'):
-                    signal_file.unlink()
-        
         # 更新されたコンテナ情報を使用してカードを更新
         if container['name'] in container_info_manager._containers_info:
             update_apps_card(container['name'], container_list, page, get_settings_func)
@@ -197,9 +189,24 @@ def update_apps_card(container_name: str, container_list: ft.Column, page: ft.Pa
             if container_list.controls:
                 target_card = container_list.controls[0]
         else:
+            # コンテナが存在しない場合（削除された場合）もシグナルファイルを削除
+            service_name = extract_service_name(container_name, docker_compose_dir)
+            if service_name:
+                signal_dir = Path(docker_compose_dir) / 'signal' / service_name
+                if signal_dir.exists():
+                    for signal_file in signal_dir.glob('*_startup_signal.txt'):
+                        signal_file.unlink()
+
             if container_name not in container_info_manager._containers_info:
                 return
             container = container_info_manager._containers_info[container_name]
+            # コンテナが停止したことを確認し、シグナルファイルを消去
+            if container['state'].lower() == 'exited':
+                if service_name:
+                    signal_dir = Path(docker_compose_dir) / 'signal' / service_name
+                    if signal_dir.exists():
+                        for signal_file in signal_dir.glob('*_startup_signal.txt'):
+                            signal_file.unlink()
             for control in container_list.controls:
                 if isinstance(control, ft.Card) and control.data and control.data.get('name') == container_name:
                     target_card = control
