@@ -182,6 +182,8 @@ def update_apps_card(container_name: str, container_list: ft.Column, page: ft.Pa
             return
 
         is_desktop = container_name == "host_machine"
+        print(f"container_name: {container_name}")
+        print(f"is_desktop: {is_desktop}")
 
         # カードを探す
         target_card = None
@@ -189,24 +191,23 @@ def update_apps_card(container_name: str, container_list: ft.Column, page: ft.Pa
             if container_list.controls:
                 target_card = container_list.controls[0]
         else:
-            # コンテナが存在しない場合（削除された場合）もシグナルファイルを削除
-            service_name = extract_service_name(container_name, docker_compose_dir)
-            if service_name:
-                signal_dir = Path(docker_compose_dir) / 'signal' / service_name
-                if signal_dir.exists():
-                    for signal_file in signal_dir.glob('*_startup_signal.txt'):
-                        signal_file.unlink()
-
-            if container_name not in container_info_manager._containers_info:
-                return
+            print(f"container_info_manager._containers_info: {container_info_manager._containers_info}")
+            print(f"container_name in container_info_manager._containers_info: {container_name in container_info_manager._containers_info}")
+            
             container = container_info_manager._containers_info[container_name]
+            print(f"container state: {container['state']}")
+            
             # コンテナが停止したことを確認し、シグナルファイルを消去
-            if container['state'].lower() == 'exited':
+            if container['state'].lower() in ['exited', 'not created']:
+                print(f"コンテナ {container_name} は停止状態です")
+                service_name = extract_service_name(container_name, docker_compose_dir)
                 if service_name:
                     signal_dir = Path(docker_compose_dir) / 'signal' / service_name
                     if signal_dir.exists():
                         for signal_file in signal_dir.glob('*_startup_signal.txt'):
                             signal_file.unlink()
+                            print(f"signal_file: {signal_file} を削除しました")
+
             for control in container_list.controls:
                 if isinstance(control, ft.Card) and control.data and control.data.get('name') == container_name:
                     target_card = control
