@@ -173,6 +173,21 @@ def create_apps_card(app_type: str, data: Dict[str, Any], page: ft.Page, contain
 
     return app_card
 
+def delete_signal_files(container_name: str, docker_compose_dir: Path) -> None:
+    """コンテナの状態に基づいてシグナルファイルを削除する
+    
+    Args:
+        container_name (str): コンテナ名
+        docker_compose_dir (Path): docker-compose.ymlが存在するディレクトリのパス
+    """
+    service_name = extract_service_name(container_name, docker_compose_dir)
+    if service_name:
+        signal_dir = Path(docker_compose_dir) / 'signal' / service_name
+        if signal_dir.exists():
+            for signal_file in signal_dir.glob('*_startup_signal.txt'):
+                signal_file.unlink()
+                print(f"signal_file: {signal_file} を削除しました")
+
 def update_apps_card(container_name: str, container_list: ft.Column, page: ft.Page, get_settings_func):
     """アプリケーションカードを更新する"""
     try:
@@ -200,13 +215,7 @@ def update_apps_card(container_name: str, container_list: ft.Column, page: ft.Pa
             # コンテナが停止したことを確認し、シグナルファイルを消去
             if container['state'].lower() in ['exited', 'not created']:
                 print(f"コンテナ {container_name} は停止状態です")
-                service_name = extract_service_name(container_name, docker_compose_dir)
-                if service_name:
-                    signal_dir = Path(docker_compose_dir) / 'signal' / service_name
-                    if signal_dir.exists():
-                        for signal_file in signal_dir.glob('*_startup_signal.txt'):
-                            signal_file.unlink()
-                            print(f"signal_file: {signal_file} を削除しました")
+                delete_signal_files(container_name, docker_compose_dir)
 
             for control in container_list.controls:
                 if isinstance(control, ft.Card) and control.data and control.data.get('name') == container_name:
