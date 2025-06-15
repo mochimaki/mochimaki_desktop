@@ -200,45 +200,44 @@ def update_apps_card(container_name: str, container_list: ft.Column, page: ft.Pa
         print(f"container_name: {container_name}")
         print(f"is_desktop: {is_desktop}")
 
-        # カードを探す
-        target_card = None
-        if is_desktop:
-            if container_list.controls:
-                target_card = container_list.controls[0]
-        else:
-            print(f"container_info_manager._containers_info: {container_info_manager._containers_info}")
-            print(f"container_name in container_info_manager._containers_info: {container_name in container_info_manager._containers_info}")
-            
-            container = container_info_manager._containers_info[container_name]
-            print(f"container state: {container['state']}")
-            
-            # コンテナが停止したことを確認し、シグナルファイルを消去
-            if container['state'].lower() in ['exited', 'not created']:
-                print(f"コンテナ {container_name} は停止状態です")
-                delete_signal_files(container_name, docker_compose_dir)
+        # コンテナ情報を取得
+        container = None if is_desktop else container_info_manager._containers_info[container_name]
 
-            for control in container_list.controls:
-                if isinstance(control, ft.Card) and control.data and control.data.get('name') == container_name:
-                    target_card = control
-                    break
+        def find_target_card():
+            """対象のカードを探す"""
+            if is_desktop:
+                if container_list.controls:
+                    return container_list.controls[0]
+            else:
+                print(f"container_info_manager._containers_info: {container_info_manager._containers_info}")
+                print(f"container_name in container_info_manager._containers_info: {container_name in container_info_manager._containers_info}")
+                
+                print(f"container state: {container['state']}")
+                
+                # コンテナが停止したことを確認し、シグナルファイルを消去
+                if container['state'].lower() in ['exited', 'not created']:
+                    print(f"コンテナ {container_name} は停止状態です")
+                    delete_signal_files(container_name, docker_compose_dir)
 
-        if not target_card:
-            return
+                for control in container_list.controls:
+                    if isinstance(control, ft.Card) and control.data and control.data.get('name') == container_name:
+                        return control
+            return None
 
-        # アプリケーション情報の取得
-        if is_desktop:
-            if 'desktop_apps' not in settings:
-                return
-            apps_dict = settings['desktop_apps'].get('host_machine', {}).get('apps', {})
-        else:
-            service_name = extract_service_name(container['name'], docker_compose_dir)
-            if not service_name:
-                raise ValueError("サービス名の抽出に失敗しました")
-            apps_dict = settings['services'][service_name]['apps']
+        def get_apps_dict(container_info=None):
+            """アプリケーション情報を取得"""
+            if is_desktop:
+                if 'desktop_apps' not in settings:
+                    return None
+                return settings['desktop_apps'].get('host_machine', {}).get('apps', {})
+            else:
+                service_name = extract_service_name(container_info['name'], docker_compose_dir)
+                if not service_name:
+                    raise ValueError("サービス名の抽出に失敗しました")
+                return settings['services'][service_name]['apps']
 
-        # アプリケーションパネルのリストを作成
-        app_panels = []
-        for app_name, app_info in apps_dict.items():
+        def create_app_panel(app_name: str, app_info: Dict[str, Any]):
+            """アプリケーションパネルを作成"""
             # アプリケーション名のテキスト
             app_name_text = ft.Text(
                 f"アプリケーション: {app_name}",
@@ -279,7 +278,7 @@ def update_apps_card(container_name: str, container_list: ft.Column, page: ft.Pa
             data_roots = get_required_data_roots(app_info)
 
             # アプリケーションカード
-            app_card = ft.Card(
+            return ft.Card(
                 content=ft.Container(
                     content=ft.Column([
                         ft.Row([
@@ -368,7 +367,19 @@ def update_apps_card(container_name: str, container_list: ft.Column, page: ft.Pa
                 ),
                 margin=ft.margin.only(left=10, right=10, top=5, bottom=5)
             )
-            app_panels.append(app_card)
+
+        # カードを探す
+        target_card = find_target_card()
+        if not target_card:
+            return
+
+        # アプリケーション情報の取得
+        apps_dict = get_apps_dict(container)
+        if not apps_dict:
+            return
+
+        # アプリケーションパネルのリストを作成
+        app_panels = [create_app_panel(app_name, app_info) for app_name, app_info in apps_dict.items()]
 
         # メインカードの内容を作成
         header_row = ft.Row([])
