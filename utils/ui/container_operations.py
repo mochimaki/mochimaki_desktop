@@ -138,14 +138,25 @@ def get_container_status(container: Dict[str, Any]) -> str:
         str: コンテナの状態
     """
     state = container.get('state', '').lower()
+    if state in ["starting", "起動処理中"]:
+        return "起動処理中"
     if state == "running":
-        return "起動中"
+        # シグナルファイルの存在を確認
+        service_name = extract_service_name(container['name'], container['docker_compose_dir'])
+        if service_name:
+            signal_dir = Path(container['docker_compose_dir']) / 'signal' / service_name
+            if signal_dir.exists():
+                for signal_file in signal_dir.glob('*_startup_signal.txt'):
+                    if signal_file.exists():
+                        return "起動中"
+            return "起動処理中"
+        return "起動処理中"
     elif state == "exited":
         return "停止中"
     elif state == "not created":
         return "未生成"
     else:
-        return state 
+        return state
 
 def wait_for_container(container_name, docker_compose_dir, timeout=60):
     """コンテナの起動を待機する
@@ -172,5 +183,30 @@ def wait_for_container(container_name, docker_compose_dir, timeout=60):
                 return True
         except subprocess.CalledProcessError:
             pass
+        time.sleep(1)
+    return False 
+
+def wait_for_signal_file(container_name: str, docker_compose_dir: str, timeout: int = 300) -> bool:
+    """シグナルファイルの生成を待機する
+    
+    Args:
+        container_name (str): コンテナ名
+        docker_compose_dir (str): docker-compose.ymlが存在するディレクトリのパス
+        timeout (int): タイムアウト時間（秒）
+        
+    Returns:
+        bool: シグナルファイルが生成された場合はTrue、タイムアウトした場合はFalse
+    """
+    start_time = time.time()
+    service_name = extract_service_name(container_name, docker_compose_dir)
+    if not service_name:
+        return False
+        
+    signal_dir = Path(docker_compose_dir) / 'signal' / service_name
+    while time.time() - start_time < timeout:
+        if signal_dir.exists():
+            for signal_file in signal_dir.glob('*_startup_signal.txt'):
+                if signal_file.exists():
+                    return True
         time.sleep(1)
     return False 

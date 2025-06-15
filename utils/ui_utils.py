@@ -12,6 +12,7 @@ from .ui import (
     get_required_data_roots,
     on_open_browser_click,
     wait_for_container,
+    wait_for_signal_file,
     create_error_text,
     show_error_message,
     update_all_dropdowns,
@@ -49,18 +50,27 @@ def start_container(container, page, container_list, get_settings_func):
         
         if wait_for_container(container['name'], docker_compose_dir):
             show_status(page, f"コンテナ {container['name']} が正常に起動しました。")
+            
+            # シグナルファイルの生成を待機
+            def check_signal_file():
+                if wait_for_signal_file(container['name'], docker_compose_dir):
+                    show_status(page, f"コンテナ {container['name']} の初期化が完了しました。")
+                    # コンテナ情報を再取得
+                    container_info_manager.get_container_info(docker_compose_dir, page)
+                    # 更新されたコンテナ情報を使用してカードを更新
+                    if container['name'] in container_info_manager._containers_info:
+                        update_apps_card(container['name'], container_list, page, get_settings_func)
+                    page.update()
+                else:
+                    # シグナルファイルが生成されていない場合は、再度チェック
+                    page.after(1000, check_signal_file)
+            
+            # 初回のチェックを開始
+            check_signal_file()
         else:
             show_status(page, f"コンテナ {container['name']} の起動がタイムアウトしました。")
             return
 
-        # コンテナ情報を再取得
-        container_info_manager.get_container_info(docker_compose_dir, page)
-        
-        # 更新されたコンテナ情報を使用してカードを更新
-        if container['name'] in container_info_manager._containers_info:
-            update_apps_card(container['name'], container_list, page, get_settings_func)
-        
-        page.update()
     except Exception as e:
         show_status(page, f"起動エラー: {e}")
         page.update()
@@ -115,6 +125,11 @@ def on_control_button_click(e, container, page, container_list, get_settings_fun
     print(f"コンテナの情報: {container}")
     
     if current_icon == ft.Icons.PLAY_CIRCLE:
+        # 起動処理中の状態に即時変更しUIを更新
+        container['state'] = 'starting'
+        update_apps_card(container['name'], container_list, page, get_settings_func)
+        page.update()
+        # 非同期で起動処理
         start_container(container, page, container_list, get_settings_func)
     else:
         stop_container(container, page, container_list, get_settings_func)
@@ -129,15 +144,6 @@ def create_apps_card(app_type: str, data: Dict[str, Any], page: ft.Page, contain
         container_list (ft.Column): コンテナリスト
         get_settings_func (function): 設定取得関数
     """
-    # 起動・停止ボタン（コンテナアプリの場合のみ表示）
-    control_button = (
-        ft.IconButton(
-            icon=get_container_control_icon(data.get('state', '')),
-            tooltip="起動/停止",
-            on_click=lambda e, c=data: on_control_button_click(e, c, page, container_list, get_settings_func)
-        ) if app_type == "container" else ft.Container(width=0)
-    )
-
     # アプリケーション情報
     info_column = ft.Column([
         ft.Text(
@@ -158,7 +164,11 @@ def create_apps_card(app_type: str, data: Dict[str, Any], page: ft.Page, contain
     app_card = ft.Card(
         content=ft.Container(
             content=ft.Row([
-                control_button,
+                ft.IconButton(
+                    icon=get_container_control_icon(data.get('state', ''), data),
+                    tooltip="起動/停止",
+                    on_click=lambda e, c=data: on_control_button_click(e, c, page, container_list, get_settings_func)
+                ) if app_type == "container" else ft.Container(width=0),
                 ft.VerticalDivider(width=1),
                 info_column,
             ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
@@ -392,7 +402,7 @@ def update_apps_card(container_name: str, container_list: ft.Column, page: ft.Pa
         else:
             header_row.controls.extend([
                 ft.IconButton(
-                    icon=get_container_control_icon(container['state']),
+                    icon=get_container_control_icon(container['state'], container),
                     tooltip="起動/停止",
                     on_click=lambda e, c=container: on_control_button_click(e, c, page, container_list, get_container_settings)
                 ),
