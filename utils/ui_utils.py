@@ -49,7 +49,7 @@ def start_container(container, page, container_list, get_settings_func):
         subprocess.check_call(['docker-compose', 'up', '-d', service_name], cwd=docker_compose_dir)
         
         if wait_for_container(container['name'], docker_compose_dir):
-            show_status(page, f"コンテナ {container['name']} が正常に起動しました。")
+            show_status(page, f"コンテナ {container['name']} の起動処理を開始しました。")
             
             # シグナルファイルの生成を待機
             def check_signal_file():

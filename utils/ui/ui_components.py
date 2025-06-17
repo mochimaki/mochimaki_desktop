@@ -43,34 +43,9 @@ def set_card_color(card, state):
     if state == "desktop":
         color = ft.Colors.BLUE_400  # 青色（デスクトップ）
     elif state.lower() == "running":
-        # シグナルファイルの存在を確認
-        container = card.data
-        if container and 'docker_compose_dir' in container:
-            service_name = extract_service_name(container['name'], container['docker_compose_dir'])
-            if service_name:
-                signal_dir = Path(container['docker_compose_dir']) / 'signal' / service_name
-                if signal_dir.exists():
-                    for signal_file in signal_dir.glob('*_startup_signal.txt'):
-                        if signal_file.exists():
-                            color = ft.Colors.GREEN_400  # 明るい緑（起動完了）
-                            break
-                    else:
-                        # シグナルファイルが存在しない場合は点滅する枠線を設定
-                        card.content.bgcolor = ft.Colors.TRANSPARENT
-                        card.content.border = ft.border.all(2, ft.Colors.GREEN_400)
-                        card.content.border_radius = ft.border_radius.all(10)
-                        # 点滅アニメーションを追加
-                        card.content.animate = ft.Animation(1000, ft.AnimationCurve.EASE_IN_OUT)
-                        card.content.opacity = 0.5
-                        return
-                else:
-                    color = ft.Colors.GREEN_400  # 明るい緑（起動中）
-            else:
-                color = ft.Colors.GREEN_400  # 明るい緑（起動中）
-        else:
-            color = ft.Colors.GREEN_400  # 明るい緑（起動中）
-    elif state.lower() == "exited":
-        color = ft.Colors.GREEN_900  # 暗い緑（停止）
+        color = ft.Colors.GREEN_400  # 明るい緑（起動中）
+    elif state.lower() in ["exited", "starting"]:  # starting状態を追加
+        color = ft.Colors.GREEN_900  # 暗い緑（停止または起動中）
     else:
         color = ft.Colors.GREY_700  # 灰色（存在しないまたはその他の状態）
     
