@@ -2,6 +2,17 @@ import json
 import subprocess
 from .dialogs import show_error_dialog, show_status
 from pathlib import Path
+import shutil
+import os
+import stat
+
+def on_rm_error(func, path, _):
+    """
+    shutil.rmtreeのエラーハンドラ。
+    .git内の読み取り専用ファイルに対応するため、ファイルのパーミッションを変更して再試行する。
+    """
+    os.chmod(path, stat.S_IWRITE)
+    func(path)
 
 def get_container_settings(docker_compose_dir, page):
     """project_info.jsonから設定を読み込む"""
@@ -64,15 +75,42 @@ def clone_dockerfiles(project_info: dict, docker_compose_dir: str, page) -> bool
         dockerfile_dir = dockerfiles_dir / dockerfile_name
         dockerfile_dir.mkdir(exist_ok=True)
         dockerfile_path = dockerfile_dir / 'Dockerfile'
+        
         if not dockerfile_path.exists():
             try:
                 show_status(page, f"{dockerfile_name}のDockerfileをクローン中...")
+                
+                # 一時的なディレクトリでクローン
+                temp_dir = dockerfile_dir / '.temp'
+                temp_dir.mkdir(exist_ok=True)
+                
+                # リポジトリをクローン（sparse-checkout用）
                 subprocess.run(
-                    ['git', 'clone', '-b', dockerfile_info['branch'], dockerfile_info['url'], str(dockerfile_dir)],
+                    ['git', 'clone', '--no-checkout', '-b', dockerfile_info['branch'], dockerfile_info['url'], str(temp_dir)],
                     check=True
                 )
+                
+                # sparse-checkoutを設定
+                subprocess.run(['git', 'sparse-checkout', 'init', '--cone'], cwd=temp_dir, check=True)
+                subprocess.run(['git', 'sparse-checkout', 'set', 'Dockerfile'], cwd=temp_dir, check=True)
+                
+                # ファイルをチェックアウト
+                subprocess.run(['git', 'checkout'], cwd=temp_dir, check=True)
+                
+                # Dockerfileを目的の場所に移動
+                temp_dockerfile = temp_dir / 'Dockerfile'
+                if temp_dockerfile.exists():
+                    temp_dockerfile.rename(dockerfile_path)
+                
+                # 一時ディレクトリを削除
+                shutil.rmtree(temp_dir, onerror=on_rm_error)
+                
                 show_status(page, f"{dockerfile_name}のDockerfileをクローンしました")
+                
             except subprocess.CalledProcessError as e:
                 show_error_dialog(page, "エラー", f"{dockerfile_name}のDockerfileのクローンに失敗しました: {str(e)}")
+                return False
+            except Exception as e:
+                show_error_dialog(page, "エラー", f"{dockerfile_name}の処理中にエラーが発生しました: {str(e)}")
                 return False
     return True
