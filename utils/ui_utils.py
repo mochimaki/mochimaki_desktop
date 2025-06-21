@@ -54,7 +54,7 @@ def start_container(container, page, container_list, get_settings_func):
             # シグナルファイルの生成を待機
             def check_signal_file():
                 if wait_for_signal_file(container['name'], docker_compose_dir):
-                    show_status(page, f"コンテナ {container['name']} の初期化が完了しました。")
+                    show_status(page, f"コンテナ {container['name']} の起動処理が完了しました。")
                     # コンテナ情報を再取得
                     container_info_manager.get_container_info(docker_compose_dir, page)
                     # 更新されたコンテナ情報を使用してカードを更新
@@ -119,10 +119,6 @@ def on_control_button_click(e, container, page, container_list, get_settings_fun
     """
     button = e.control
     current_icon = button.icon
-    
-    print(f"現在のアイコン: {current_icon}")
-    print(f"コンテナの状態: {container['state']}")
-    print(f"コンテナの情報: {container}")
     
     if current_icon == ft.Icons.PLAY_CIRCLE:
         # 起動処理中の状態に即時変更しUIを更新
@@ -196,7 +192,6 @@ def delete_signal_files(container_name: str, docker_compose_dir: Path) -> None:
         if signal_dir.exists():
             for signal_file in signal_dir.glob('*_startup_signal.txt'):
                 signal_file.unlink()
-                print(f"signal_file: {signal_file} を削除しました")
 
 def update_apps_card(container_name: str, container_list: ft.Column, page: ft.Page, get_settings_func):
     """アプリケーションカードを更新する"""
@@ -207,8 +202,6 @@ def update_apps_card(container_name: str, container_list: ft.Column, page: ft.Pa
             return
 
         is_desktop = container_name == "host_machine"
-        print(f"container_name: {container_name}")
-        print(f"is_desktop: {is_desktop}")
 
         # コンテナ情報を取得
         container = None if is_desktop else container_info_manager._containers_info[container_name]
@@ -219,14 +212,9 @@ def update_apps_card(container_name: str, container_list: ft.Column, page: ft.Pa
                 if container_list.controls:
                     return container_list.controls[0]
             else:
-                print(f"container_info_manager._containers_info: {container_info_manager._containers_info}")
-                print(f"container_name in container_info_manager._containers_info: {container_name in container_info_manager._containers_info}")
-                
-                print(f"container state: {container['state']}")
                 
                 # コンテナが停止したことを確認し、シグナルファイルを消去
                 if container['state'].lower() in ['exited', 'not created']:
-                    print(f"コンテナ {container_name} は停止状態です")
                     delete_signal_files(container_name, docker_compose_dir)
 
                 for control in container_list.controls:
@@ -458,13 +446,7 @@ def update_apps_card(container_name: str, container_list: ft.Column, page: ft.Pa
 
 def show_ip_setting_dialog(page: ft.Page, container, app_name, device_type, container_list):
     """IPアドレス設定ダイアログを表示する"""
-    print(f"""show_ip_setting_dialog が呼び出されました:
-page: {page}
-container: {container}
-app_name: {app_name}
-device_type: {device_type}
-container_list: {container_list}
-""")
+
     try:
         settings = get_container_settings(docker_compose_dir, page)
 
@@ -789,7 +771,6 @@ def show_data_path_dialog(e, page, container_name: str, app_name: str, data_root
         file_picker.get_directory_path()
 
     except Exception as e:
-        print(f"データパス設定ダイアログでエラーが発生: {e}")
         show_error_dialog(
             page,
             "エラー",

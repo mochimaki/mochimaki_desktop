@@ -27,7 +27,6 @@ def create_start_command(app_info):
         args.append(f"{arg_name} {arg_value}")
     args_str = " ".join(args)
     command = f"{app_info['interpreter']} {app_info['main']} {args_str}"
-    print(f"実行コマンド: {command}")
     return command
 
 def setup_desktop_apps_directory(project_root: str, desktop_apps: Dict[str, Any], page: ft.Page = None):

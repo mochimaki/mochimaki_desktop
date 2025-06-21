@@ -116,5 +116,3 @@ def update_all_dropdowns(ip_dropdowns_column, error_text, scrollable_container, 
 
     except Exception as e:
         print(f"update_all_dropdowns でエラーが発生: {e}")
-        import traceback
-        print(traceback.format_exc())
