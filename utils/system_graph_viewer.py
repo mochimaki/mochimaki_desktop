@@ -195,5 +195,26 @@ async def main(page: ft.Page):
         page.add(ft.Text(f"致命的なエラーが発生しました:\n{tb}", font_family="monospace"))
         await page.update_async()
 
+def auto_generate_mermaid_file():
+    """システム構成のMermaidファイルを自動生成する"""
+    # docker_compose_dirはui_utils.pyで定義されているグローバル変数
+    # この関数はui_utils.pyから呼び出されることを想定
+    try:
+        # ui_utils.pyのdocker_compose_dirを参照
+        from .ui_utils import docker_compose_dir
+        
+        # docker_compose_dirをPathオブジェクトに変換
+        docker_compose_path = Path(docker_compose_dir) if docker_compose_dir else None
+        
+        if docker_compose_path and docker_compose_path.exists():
+            viewer = SystemGraphViewer()
+            success, message = viewer.generate_system_graph(docker_compose_path)
+            if success:
+                print(f"Mermaidファイル自動生成: {message}")
+            else:
+                print(f"Mermaidファイル自動生成エラー: {message}")
+    except Exception as e:
+        print(f"Mermaidファイル自動生成でエラーが発生: {e}")
+
 if __name__ == "__main__":
     ft.app(target=main) 

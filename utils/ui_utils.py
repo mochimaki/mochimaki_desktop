@@ -5,7 +5,7 @@ from .settings import get_container_settings, clone_repositories, clone_dockerfi
 from .dialogs import show_status, show_error_dialog
 from .ip_settings import update_settings_json, on_edit_ip_options
 from .generate_docker_compose import DockerComposeGenerator
-from .system_graph_viewer import SystemGraphViewer
+from .system_graph_viewer import auto_generate_mermaid_file
 from .ui import (
     get_container_status,
     get_container_control_icon,
@@ -193,24 +193,6 @@ def delete_signal_files(container_name: str, docker_compose_dir: Path) -> None:
         if signal_dir.exists():
             for signal_file in signal_dir.glob('*_startup_signal.txt'):
                 signal_file.unlink()
-
-def auto_generate_mermaid_file():
-    """システム構成のMermaidファイルを自動生成する"""
-    global docker_compose_dir
-    
-    try:
-        # docker_compose_dirをPathオブジェクトに変換
-        docker_compose_path = Path(docker_compose_dir) if docker_compose_dir else None
-        
-        if docker_compose_path and docker_compose_path.exists():
-            viewer = SystemGraphViewer()
-            success, message = viewer.generate_system_graph(docker_compose_path)
-            if success:
-                print(f"Mermaidファイル自動生成: {message}")
-            else:
-                print(f"Mermaidファイル自動生成エラー: {message}")
-    except Exception as e:
-        print(f"Mermaidファイル自動生成でエラーが発生: {e}")
 
 def update_apps_card(container_name: str, container_list: ft.Column, page: ft.Page, get_settings_func):
     """アプリケーションカードを更新する"""
