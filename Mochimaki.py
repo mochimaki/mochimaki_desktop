@@ -65,9 +65,15 @@ def main(page: ft.Page):
         on_click=lambda _: refresh_container_status(page, container_list)
     )
 
+    system_graph_button = ft.ElevatedButton(
+        "システムグラフ生成",
+        icon=ft.Icons.ACCOUNT_TREE,
+        on_click=lambda _: None  # 後で実装予定
+    )
+
     # ボタンを横に並べるためのRowを作成
     buttons_row = ft.Row(
-        [select_container_button, refresh_button],
+        [select_container_button, refresh_button, system_graph_button],
         alignment=ft.MainAxisAlignment.CENTER,
         spacing=20,  # ボタン間の間隔を追加
     )
