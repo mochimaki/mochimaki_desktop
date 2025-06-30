@@ -71,10 +71,21 @@ class MermaidContainerManager:
     def _build_container(self, page: ft.Page) -> bool:
         """コンテナをビルドする"""
         try:
-            # リポジトリをクローン
+            # リポジトリをクローンまたは更新
             if not self.repo_dir.exists():
                 show_status(page, "Mermaidリポジトリをクローン中...")
                 subprocess.run(['git', 'clone', self.repo_url, str(self.repo_dir)], check=True)
+            else:
+                # 既存のリポジトリを更新
+                show_status(page, "Mermaidリポジトリを更新中...")
+                try:
+                    subprocess.run(['git', 'pull', 'origin', 'main'], cwd=self.repo_dir, check=True)
+                except subprocess.CalledProcessError:
+                    # 更新に失敗した場合は、リポジトリを再クローン
+                    show_status(page, "リポジトリの更新に失敗しました。再クローンを実行中...")
+                    import shutil
+                    shutil.rmtree(self.repo_dir)
+                    subprocess.run(['git', 'clone', self.repo_url, str(self.repo_dir)], check=True)
             
             # イメージが存在するかチェック
             result = subprocess.run(
