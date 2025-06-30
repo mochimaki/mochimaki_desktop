@@ -1,7 +1,9 @@
 import flet as ft
 from utils import (
     on_container_dialog_result,
-    refresh_container_status
+    refresh_container_status,
+    initialize_mermaid_container,
+    on_system_graph_button_click
 )
 
 # グローバル変数の宣言
@@ -14,6 +16,9 @@ def main(page: ft.Page):
     page.theme_mode = ft.ThemeMode.DARK
     page.vertical_alignment = ft.MainAxisAlignment.CENTER
     page.padding = 20
+
+    # Mochimaki起動時にmermaidコンテナを初期化
+    initialize_mermaid_container(page)
 
     # スクロール可能なコンテナリストを作成
     container_list = ft.Column(
@@ -66,9 +71,9 @@ def main(page: ft.Page):
     )
 
     system_graph_button = ft.ElevatedButton(
-        "システムグラフ生成",
+        "システムグラフを表示",
         icon=ft.Icons.ACCOUNT_TREE,
-        on_click=lambda _: None  # 後で実装予定
+        on_click=lambda _: on_system_graph_button_click(page)
     )
 
     # ボタンを横に並べるためのRowを作成

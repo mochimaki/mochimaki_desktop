@@ -211,10 +211,41 @@ def auto_generate_mermaid_file():
             success, message = viewer.generate_system_graph(docker_compose_path)
             if success:
                 print(f"Mermaidファイル自動生成: {message}")
+                
+                # Mermaidコンテナに通知を送信
+                notify_mermaid_container(docker_compose_path)
             else:
                 print(f"Mermaidファイル自動生成エラー: {message}")
     except Exception as e:
         print(f"Mermaidファイル自動生成でエラーが発生: {e}")
+
+def notify_mermaid_container(docker_compose_path: Path):
+    """Mermaidコンテナにシステムグラフの更新を通知する"""
+    try:
+        from .mermaid_container_manager import mermaid_container_manager
+        
+        # output_mermaid.txtの内容を読み込み
+        mermaid_file_path = docker_compose_path / "output_mermaid.txt"
+        if mermaid_file_path.exists():
+            with open(mermaid_file_path, 'r', encoding='utf-8') as f:
+                mermaid_content = f.read()
+            
+            # Mermaidコンテナに更新を送信
+            # ページオブジェクトがないため、エラーハンドリングは最小限に
+            try:
+                mermaid_container_manager.update_graph(
+                    mermaid_content, 
+                    str(mermaid_file_path), 
+                    None  # ページオブジェクトなし
+                )
+                print("Mermaidコンテナにシステムグラフの更新を通知しました")
+            except Exception as e:
+                print(f"Mermaidコンテナへの通知に失敗: {e}")
+        else:
+            print("output_mermaid.txtが見つかりません")
+            
+    except Exception as e:
+        print(f"Mermaidコンテナ通知でエラーが発生: {e}")
 
 if __name__ == "__main__":
     ft.app(target=main) 
