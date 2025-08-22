@@ -157,9 +157,19 @@ class DockerComposeGenerator:
         ]
         
         for app_name, app_info in apps.items():
-            main_file = Path(app_info['main']).stem
+            # 後方互換性のため、program_dir_nameが指定されていない場合は
+            # メインプログラムのパスから親ディレクトリ名を取得
+            if 'program_dir_name' in app_info:
+                program_dir_name = app_info['program_dir_name']
+            else:
+                # 既存の動作を維持：メインプログラムの親ディレクトリ名を使用
+                program_dir_name = Path(app_info['main']).parent.name
+            
+            # コンテナ側のパスはメインプログラム名（拡張子除く）を使用
+            main_program_path = Path(app_info['main']).stem
+            
             volumes.append(
-                f"./programs/{main_file}:/home/{user}/apps/{app_name}/{main_file}"
+                f"./programs/{program_dir_name}:/home/{user}/apps/{app_name}/{main_program_path}"
             )
             volumes.append(
                 f"./container_info/{service_name}/{app_name}/app_info.json:/home/{user}/apps/{app_name}/app_info.json"
